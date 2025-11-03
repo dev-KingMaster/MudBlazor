@@ -4,6 +4,7 @@
 
 using System.Collections;
 using System.Globalization;
+using System.Linq;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using MudBlazor.Interop;
@@ -34,6 +35,7 @@ namespace MudBlazor
         private double _tabBarContentSize;
         private double _allTabsSize;
         private double _scrollPosition;
+        private bool _disabled;
 
         private IResizeObserver? _resizeObserver = null;
 
@@ -61,6 +63,29 @@ namespace MudBlazor
         [Parameter]
         [Category(CategoryTypes.Tabs.Behavior)]
         public bool EnableDragAndDrop { get; set; }
+
+        /// <summary>
+        /// Prevents the user from interacting with all tab panels within this component.
+        /// </summary>
+        /// <remarks>
+        /// Defaults to <c>false</c>. When <c>true</c>, all child <see cref="MudTabPanel"/> components are disabled.
+        /// </remarks>
+        [Parameter]
+        [Category(CategoryTypes.Tabs.Behavior)]
+        public bool Disabled
+        {
+            get => _disabled;
+            set
+            {
+                if (_disabled == value)
+                {
+                    return;
+                }
+
+                _disabled = value;
+                UpdateChildrenDisabledState();
+            }
+        }
 
         /// <summary>
         /// When <see cref="EnableDragAndDrop" /> is set to true, this event will be raised when an item is dropped.
@@ -565,10 +590,26 @@ namespace MudBlazor
 
         #region Children
 
+        private void UpdateChildrenDisabledState()
+        {
+            foreach (var panel in _panels)
+            {
+                panel.UpdateParentDisabled(_disabled);
+            }
+
+            if (_isRendered)
+            {
+                Rerender();
+                _ = InvokeAsync(StateHasChanged);
+            }
+        }
+
         internal void AddPanel(MudTabPanel tabPanel)
         {
             _panels.Add(tabPanel);
             SortPanels();
+
+            tabPanel.UpdateParentDisabled(_disabled);
 
             if (_panels.Count == _activePanelIndex + 1 || _activePanelIndex == -1 && _panels.Count == 1)
                 ActivePanel = tabPanel;
@@ -653,7 +694,7 @@ namespace MudBlazor
 
         private async void ActivatePanel(MudTabPanel panel, MouseEventArgs? ev, bool ignoreDisabledState = false)
         {
-            if ((panel.Visible && !panel.Disabled) || ignoreDisabledState)
+            if ((panel.Visible && !panel.IsDisabled) || ignoreDisabledState)
             {
                 var index = _panels.IndexOf(panel);
                 var previewArgs = new TabInteractionEventArgs
@@ -806,7 +847,7 @@ namespace MudBlazor
         {
             var tabClass = new CssBuilder("mud-tab")
               .AddClass($"mud-tab-active", when: () => panel == ActivePanel)
-              .AddClass($"mud-disabled", panel.Disabled)
+              .AddClass($"mud-disabled", panel.IsDisabled)
               .AddClass($"mud-ripple", Ripple)
               .AddClass(ActiveTabClass, when: () => panel == ActivePanel)
               .AddClass(TabPanelClass)
@@ -840,7 +881,7 @@ namespace MudBlazor
 
         private Color GetPanelIconColor(MudTabPanel panel)
         {
-            var iconColor = panel.Disabled ? Color.Inherit : panel.IconColor != default ? panel.IconColor : IconColor;
+            var iconColor = panel.IsDisabled ? Color.Inherit : panel.IconColor != default ? panel.IconColor : IconColor;
 
             return iconColor;
         }
@@ -1154,6 +1195,11 @@ namespace MudBlazor
         /// </summary>
         protected virtual async Task HandleTabKeyDownAsync(KeyboardEventArgs e, MudTabPanel panel)
         {
+            if (panel.IsDisabled && (e.Key == "Enter" || e.Key == " "))
+            {
+                return;
+            }
+
             switch (e.Key)
             {
                 case "Enter":
@@ -1205,10 +1251,14 @@ namespace MudBlazor
         /// </summary>
         private async Task MoveFocusToPreviousTab(MudTabPanel currentPanel)
         {
-            var enabledPanels = _panels.Where(p => !p.Disabled).ToList();
+            var enabledPanels = _panels.Where(p => !p.IsDisabled).ToList();
             if (enabledPanels.Count <= 1) return;
 
             var currentIndex = enabledPanels.IndexOf(currentPanel);
+            if (currentIndex < 0)
+            {
+                currentIndex = 0;
+            }
             var previousIndex = currentIndex <= 0 ? enabledPanels.Count - 1 : currentIndex - 1;
             var previousPanel = enabledPanels[previousIndex];
 
@@ -1220,10 +1270,14 @@ namespace MudBlazor
         /// </summary>
         private async Task MoveFocusToNextTab(MudTabPanel currentPanel)
         {
-            var enabledPanels = _panels.Where(p => !p.Disabled).ToList();
+            var enabledPanels = _panels.Where(p => !p.IsDisabled).ToList();
             if (enabledPanels.Count <= 1) return;
 
             var currentIndex = enabledPanels.IndexOf(currentPanel);
+            if (currentIndex < 0)
+            {
+                currentIndex = 0;
+            }
             var nextIndex = currentIndex >= enabledPanels.Count - 1 ? 0 : currentIndex + 1;
             var nextPanel = enabledPanels[nextIndex];
 

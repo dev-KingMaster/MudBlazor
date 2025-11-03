@@ -1,0 +1,21 @@
+@namespace MudBlazor.Docs.Examples
+
+<div class="d-flex flex-column align-center gap-3">
+    <MudTabs Disabled="@_disabled" PanelClass="pa-4" Class="w-100" Style="max-width: 500px;">
+        <MudTabPanel Text="Overview">
+            <MudText Typo="Typo.body1">Tabs are interactive by default.</MudText>
+        </MudTabPanel>
+        <MudTabPanel Text="Details">
+            <MudText Typo="Typo.body1">Disabling the parent component prevents switching between panels.</MudText>
+        </MudTabPanel>
+        <MudTabPanel Text="Summary" Disabled="true">
+            <MudText Typo="Typo.body1">Individual panels can still be disabled when the parent is enabled.</MudText>
+        </MudTabPanel>
+    </MudTabs>
+
+    <MudSwitch @bind-Value="_disabled" Label="Disable all tabs" Color="Color.Primary" />
+</div>
+
+@code {
+    private bool _disabled;
+}

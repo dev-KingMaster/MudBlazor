@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using Bunit;
 using FluentAssertions;
@@ -967,6 +968,50 @@ namespace MudBlazor.UnitTests.Components
                     contentElement.TextContent.Should().Be(comp.Instance.Tabs[i].Content);
                 }
             }
+        }
+
+        [Test]
+        public void DisabledProperty_DisablesAllPanels()
+        {
+            var comp = Context.RenderComponent<TabsDisabledStateTest>(parameters => parameters
+                .Add(p => p.Disabled, true)
+                .Add(p => p.ChildDisabled, false));
+
+            var panels = comp.FindAll(".mud-tab");
+            panels.Should().HaveCount(3);
+            panels.Should().OnlyContain(panel => panel.ClassList.Contains("mud-disabled"));
+
+            comp.Find(".mud-tab-active").TrimmedText().Should().Be("First");
+
+            panels[1].Click();
+            comp.Find(".mud-tab-active").TrimmedText().Should().Be("First");
+
+            panels[0].GetAttribute("aria-disabled").Should().Be("true");
+        }
+
+        [Test]
+        public void DisabledProperty_TogglesAndRespectsChildState()
+        {
+            var comp = Context.RenderComponent<TabsDisabledStateTest>(parameters => parameters
+                .Add(p => p.Disabled, false)
+                .Add(p => p.ChildDisabled, true));
+
+            var panels = comp.FindAll(".mud-tab");
+            panels.Should().HaveCount(3);
+            panels[0].ClassList.Contains("mud-disabled").Should().BeFalse();
+            panels[1].ClassList.Contains("mud-disabled").Should().BeFalse();
+            panels[2].ClassList.Contains("mud-disabled").Should().BeTrue();
+            panels[2].GetAttribute("aria-disabled").Should().Be("true");
+
+            comp.SetParametersAndRender(parameters => parameters.Add(p => p.Disabled, true));
+            panels = comp.FindAll(".mud-tab");
+            panels.Should().OnlyContain(panel => panel.ClassList.Contains("mud-disabled"));
+
+            comp.SetParametersAndRender(parameters => parameters.Add(p => p.Disabled, false));
+            panels = comp.FindAll(".mud-tab");
+            panels[0].ClassList.Contains("mud-disabled").Should().BeFalse();
+            panels[1].ClassList.Contains("mud-disabled").Should().BeFalse();
+            panels[2].ClassList.Contains("mud-disabled").Should().BeTrue();
         }
 
         [Test]

@@ -32,6 +32,21 @@ public partial class MudTabPanel
     [CascadingParameter]
     private MudTabs? Parent { get; set; }
 
+    internal bool ParentDisabled { get; private set; }
+
+    internal bool IsDisabled => ParentDisabled || Disabled;
+
+    internal void UpdateParentDisabled(bool value)
+    {
+        if (ParentDisabled == value)
+        {
+            return;
+        }
+
+        ParentDisabled = value;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     /// <summary>
     /// The reference to the underlying panel element.
     /// </summary>
